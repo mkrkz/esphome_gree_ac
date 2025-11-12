@@ -528,7 +528,20 @@ void SinclairACCNT::send_packet()
     /* SAVE --------------------------------------------------------------------------- */
     if (this->save_state_)
     {
-        packet[protocol::REPORT_SAVE_BYTE] |= protocol::REPORT_SAVE_MASK;
+        if (this->inverter_protection_)
+        {
+            ESP_LOGW(TAG, "SAVE mode blocked by inverter protection - keeping AC in full inverter mode");
+            // Don't set the SAVE bit
+        }
+        else
+        {
+            packet[protocol::REPORT_SAVE_BYTE] |= protocol::REPORT_SAVE_MASK;
+        }
+    }
+    else
+    {
+        // Explicitly clear SAVE bit to ensure inverter operation
+        packet[protocol::REPORT_SAVE_BYTE] &= ~protocol::REPORT_SAVE_MASK;
     }
 
     /* Do the command, length */
@@ -543,7 +556,7 @@ void SinclairACCNT::send_packet()
     /* Do checksum - sum of all bytes except sync and checksum itself% 0x100 
        the module would be realized by the fact that we are using uint8_t*/
     uint8_t checksum = 0;
-    for (uint8_t i = 0 ; i < packet.size() ; i++)
+    for (uint8_t i = 2 ; i < packet.size() ; i++)
     {
         checksum += packet[i];
     }
@@ -769,11 +782,17 @@ bool SinclairACCNT::processUnitReport()
 climate::ClimateMode SinclairACCNT::determine_mode()
 {
     uint8_t mode = (this->serialProcess_.data[protocol::REPORT_MODE_BYTE] & protocol::REPORT_MODE_MASK) >> protocol::REPORT_MODE_POS;
-
-    /* as mode presented by climate component incorporates both power and mode we will store this separately for Sinclair
-       in _internal_ fields */
-    /* check unit power flag */
+    
+    bool previous_power = this->power_internal_;
     this->power_internal_ = (this->serialProcess_.data[protocol::REPORT_PWR_BYTE] & protocol::REPORT_PWR_MASK) != 0;
+    
+    // Log if power state changed (could indicate start-stop behavior)
+    if (previous_power != this->power_internal_) {
+        ESP_LOGD(TAG, "AC power state changed: %s -> %s", 
+                 previous_power ? "ON" : "OFF",
+                 this->power_internal_ ? "ON" : "OFF");
+    }
+    
 
     /* check unit mode */
     switch (mode)
@@ -1079,8 +1098,11 @@ void SinclairACCNT::on_sleep_change(bool sleep)
     if (this->state_ != ACState::Ready)
         return;
 
-    ESP_LOGD(TAG, "Setting sleep");
+    if (sleep && this->inverter_protection_) {
+        ESP_LOGW(TAG, " SLEEP mode enabled - may reduce inverter efficiency");
+    }
 
+    ESP_LOGD(TAG, "Setting sleep mode to: %s", sleep ? "ON" : "OFF");
     this->update_ = ACUpdate::UpdateStart;
     this->sleep_state_ = sleep;
 }
@@ -1101,8 +1123,25 @@ void SinclairACCNT::on_save_change(bool save)
     if (this->state_ != ACState::Ready)
         return;
 
-    ESP_LOGD(TAG, "Setting save");
+    if (save && this->inverter_protection_) {
+        ESP_LOGE(TAG, "   SAVE mode is BLOCKED by inverter protection!");
+        ESP_LOGE(TAG, "   Energy SAVE mode forces start-stop operation instead of inverter mode.");
+        ESP_LOGE(TAG, "   To enable, set 'inverter_protection: false' in your YAML config.");
+        
+        // Force it back to OFF
+        this->save_state_ = false;
+        if (this->save_switch_ != nullptr) {
+            this->save_switch_->publish_state(false);
+        }
+        return;
+    }
+    
+    if (save) {s
+        ESP_LOGW(TAG, "   WARNING: Energy SAVE mode WILL disable inverter operation!");
+        ESP_LOGW(TAG, "   Your AC will switch to start-stop compressor cycling.");
+    }
 
+    ESP_LOGD(TAG, "Setting save mode to: %s", save ? "ON" : "OFF");
     this->update_ = ACUpdate::UpdateStart;
     this->save_state_ = save;
 }

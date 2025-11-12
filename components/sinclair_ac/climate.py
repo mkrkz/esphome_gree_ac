@@ -36,6 +36,7 @@ CONF_XFAN_SWITCH                = "xfan_switch"
 CONF_SAVE_SWITCH                = "save_switch"
 
 CONF_CURRENT_TEMPERATURE_SENSOR = "current_temperature_sensor"
+CONF_INVERTER_PROTECTION         = "inverter_protection"
 
 HORIZONTAL_SWING_OPTIONS = [
     "0 - OFF",
@@ -102,6 +103,7 @@ CONFIG_SCHEMA = cv.All(
         {
             cv.GenerateID(): cv.declare_id(SinclairACCNT),
             cv.Optional(CONF_CURRENT_TEMPERATURE_SENSOR): cv.use_id(sensor.Sensor),
+            cv.Optional(CONF_INVERTER_PROTECTION, default=True): cv.boolean,  # Add this
         }
     ),
 )
@@ -112,6 +114,10 @@ async def to_code(config):
     await climate.register_climate(var, config)
     await cg.register_component(var, config)
     await uart.register_uart_device(var, config)
+    
+    # Add inverter protection configuration
+    if CONF_INVERTER_PROTECTION in config:
+        cg.add(var.set_inverter_protection(config[CONF_INVERTER_PROTECTION]))
     
     if CONF_HORIZONTAL_SWING_SELECT in config:
         conf = config[CONF_HORIZONTAL_SWING_SELECT]

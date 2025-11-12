@@ -152,7 +152,8 @@ const std::vector<uint8_t> allowedPackets = {protocol::CMD_IN_UNIT_REPORT};
 class SinclairACCNT : public SinclairAC {
     public:
         void control(const climate::ClimateCall &call) override;
-
+        void set_inverter_protection(bool enable) { this->inverter_protection_ = enable; }
+        
         void on_horizontal_swing_change(const std::string &swing) override;
         void on_vertical_swing_change(const std::string &swing) override;
 
@@ -169,6 +170,8 @@ class SinclairACCNT : public SinclairAC {
         void loop() override;
 
     protected:
+        bool inverter_protection_ = true;  // Add this flag
+
         ACState state_ = ACState::Initializing; /* Stores if the AC is responsive or not */
         ACUpdate update_ = ACUpdate::NoUpdate;  /* Stores if we need tu send update to AC or no */
 
