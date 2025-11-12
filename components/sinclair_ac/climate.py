@@ -77,35 +77,40 @@ DISPLAY_UNIT_OPTIONS = [
     "F",
 ]
 
-SWITCH_SCHEMA = switch.SWITCH_SCHEMA.extend(cv.COMPONENT_SCHEMA).extend(
-    {cv.GenerateID(): cv.declare_id(SinclairACSwitch)}
-)
-SELECT_SCHEMA = select.SELECT_SCHEMA.extend(
-    {cv.GenerateID(CONF_ID): cv.declare_id(SinclairACSelect)}
-)
-
-SCHEMA = climate.CLIMATE_SCHEMA.extend(
-    {
-        cv.Optional(CONF_HORIZONTAL_SWING_SELECT): SELECT_SCHEMA,
-        cv.Optional(CONF_VERTICAL_SWING_SELECT): SELECT_SCHEMA,
-        cv.Optional(CONF_DISPLAY_SELECT): SELECT_SCHEMA,
-        cv.Optional(CONF_DISPLAY_UNIT_SELECT): SELECT_SCHEMA,
-        cv.Optional(CONF_PLASMA_SWITCH): SWITCH_SCHEMA,
-        cv.Optional(CONF_BEEPER_SWITCH): SWITCH_SCHEMA,
-        cv.Optional(CONF_SLEEP_SWITCH): SWITCH_SCHEMA,
-        cv.Optional(CONF_XFAN_SWITCH): SWITCH_SCHEMA,
-        cv.Optional(CONF_SAVE_SWITCH): SWITCH_SCHEMA,
-    }
-).extend(uart.UART_DEVICE_SCHEMA)
-
 CONFIG_SCHEMA = cv.All(
-    SCHEMA.extend(
+    climate.climate_schema(SinclairACCNT).extend(
         {
-            cv.GenerateID(): cv.declare_id(SinclairACCNT),
+            cv.Optional(CONF_HORIZONTAL_SWING_SELECT): select.select_schema(
+                SinclairACSelect
+            ),
+            cv.Optional(CONF_VERTICAL_SWING_SELECT): select.select_schema(
+                SinclairACSelect
+            ),
+            cv.Optional(CONF_DISPLAY_SELECT): select.select_schema(
+                SinclairACSelect
+            ),
+            cv.Optional(CONF_DISPLAY_UNIT_SELECT): select.select_schema(
+                SinclairACSelect
+            ),
+            cv.Optional(CONF_PLASMA_SWITCH): switch.switch_schema(
+                SinclairACSwitch
+            ),
+            cv.Optional(CONF_BEEPER_SWITCH): switch.switch_schema(
+                SinclairACSwitch
+            ),
+            cv.Optional(CONF_SLEEP_SWITCH): switch.switch_schema(
+                SinclairACSwitch
+            ),
+            cv.Optional(CONF_XFAN_SWITCH): switch.switch_schema(
+                SinclairACSwitch
+            ),
+            cv.Optional(CONF_SAVE_SWITCH): switch.switch_schema(
+                SinclairACSwitch
+            ),
             cv.Optional(CONF_CURRENT_TEMPERATURE_SENSOR): cv.use_id(sensor.Sensor),
-            cv.Optional(CONF_INVERTER_PROTECTION, default=True): cv.boolean,  # Add this
+            cv.Optional(CONF_INVERTER_PROTECTION, default=True): cv.boolean,
         }
-    ),
+    ).extend(uart.UART_DEVICE_SCHEMA),
 )
 
 
