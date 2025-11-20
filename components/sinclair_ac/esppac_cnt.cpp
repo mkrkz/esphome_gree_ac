@@ -247,6 +247,16 @@ void SinclairACCNT::send_packet()
                 case climate::CLIMATE_MODE_HEAT:
                     mode = protocol::REPORT_MODE_HEAT;
                     break;
+                case climate::CLIMATE_MODE_HEAT_COOL:
+                    // Heat-cool mode not supported by protocol, default to AUTO
+                    mode = protocol::REPORT_MODE_AUTO;
+                    ESP_LOGW(TAG, "HEAT_COOL mode not supported, using AUTO mode");
+                    break;
+                case climate::CLIMATE_MODE_OFF:
+                default:
+                    // Default to AUTO if mode_internal_ is somehow OFF or unknown
+                    mode = protocol::REPORT_MODE_AUTO;
+                    break;
             }
             power = false;
             break;
@@ -1136,7 +1146,7 @@ void SinclairACCNT::on_save_change(bool save)
         return;
     }
     
-    if (save) {s
+    if (save) {
         ESP_LOGW(TAG, "   WARNING: Energy SAVE mode WILL disable inverter operation!");
         ESP_LOGW(TAG, "   Your AC will switch to start-stop compressor cycling.");
     }
